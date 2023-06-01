@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <omp.h>
 #define MAX_WORD_SIZE 25
 
 typedef struct {
@@ -10,6 +11,8 @@ typedef struct {
 typedef struct {
 	Node* front;
 	Node* rear;
+	omp_lock_t lock;
+
 } Queue;
 
 Node* newNode(char* word) {
@@ -22,10 +25,12 @@ Node* newNode(char* word) {
 Queue* createQueue() {
 	Queue* q = (Queue*)malloc(sizeof(Queue));
 	q->front = q->rear = NULL;
+	omp_init_lock(&(q->lock));
 	return q;
 }
 
 void enQueue(Queue* q, char* word) {
+	omp_set_lock(&(q->lock));
 	Node* temp = newNode(word);
 	if (temp == NULL) {
 		free(temp);
@@ -34,23 +39,29 @@ void enQueue(Queue* q, char* word) {
 
 	if (q->rear == NULL) {
 		q->front = q->rear = temp;
+		omp_unset_lock(&(q->lock));
 		return;
 	}
 
 	q->rear->next = temp;
 	q->rear = temp;
+	//printf("%s added by thread-%d\n", q->rear->word, omp_get_thread_num());
+	omp_unset_lock(&(q->lock));
 }
 
 char* deQueue(Queue* q) {
+	omp_set_lock(&(q->lock));
 	char* word = NULL;
 
 	if (isQueueEmpty(q)) {
 		printf("Queue is empty. Cannot dequeue.\n");
+		omp_unset_lock(&(q->lock));
 		return word;
 	}
 
 	Node* temp = q->front;
-	word = temp->word;
+	word = (char*)malloc(MAX_WORD_SIZE * sizeof(char));
+	strcpy_s(word, MAX_WORD_SIZE, temp->word);
 
 	q->front = q->front->next;
 	free(temp);
@@ -58,6 +69,7 @@ char* deQueue(Queue* q) {
 	if (q->front == NULL)
 		q->rear = NULL;
 
+	omp_unset_lock(&(q->lock));
 	return word;
 }
 
@@ -66,6 +78,11 @@ int isQueueEmpty(Queue* q) {
 }
 
 void printQueue(Queue* q) {
+	if (isQueueEmpty(q)) {
+		printf("Queue is empty.\n");
+		return;
+	}
+
 	int iterator = 0;
 	Node* tmp = q->front;
 
@@ -76,4 +93,15 @@ void printQueue(Queue* q) {
 	}
 
 	free(tmp);
+}
+
+void destroyQueue(Queue* q) {
+	Node* current = q->front;
+	while (current != NULL) {
+		Node* next = current->next;
+		free(current);
+		current = next;
+	}
+	omp_destroy_lock(&(q->lock));
+	free(q);
 }
