@@ -45,7 +45,6 @@ void enQueue(Queue* q, char* word) {
 
 	q->rear->next = temp;
 	q->rear = temp;
-	//printf("%s added by thread-%d\n", q->rear->word, omp_get_thread_num());
 	omp_unset_lock(&(q->lock));
 }
 

@@ -27,18 +27,16 @@ int main() {
 			if (threadNum < 8) {
 				// Producer threads
 				while (fscanf_s(file, "%s", word, (unsigned)_countof(word)) == 1) {
-					// Remove non-alphabetic characters from word
 					int len = strlen(word);
 					int j = 0;
 					for (int i = 0; i < len; i++) {
 						if (isalpha(word[i])) {
-							word[j] = tolower(word[i]);  // Convert to lowercase if needed
+							word[j] = tolower(word[i]);
 							j++;
 						}
 					}
-					word[j] = '\0';  // Null-terminate the modified word
+					word[j] = '\0';
 
-					// Enqueue the modified word
 					enQueue(queues[threadNum % 4], word);
 				}
 #pragma omp barrier
@@ -49,12 +47,9 @@ int main() {
 				while (!isQueueEmpty(queues[threadNum % 4])) {
 					int words = 0, chars = 0;
 					char* word = deQueue(queues[threadNum % 4]);
-					//printf("%s dequeued from thread-%d\n", word, omp_get_thread_num());
 					if (word != NULL) {
-						// Calculate number of words and characters in the sentence
 						words++;
 						chars = strlen(word);
-						// Update the total number of words and characters
 #pragma omp critical
 						{
 							totalWords += words;
